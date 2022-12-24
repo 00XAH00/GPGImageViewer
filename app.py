@@ -1,6 +1,6 @@
 import zipfile
 from PyQt6.QtGui import QPixmap, QFileSystemModel
-from PyQt6.QtWidgets import QFileDialog, QMessageBox
+from PyQt6.QtWidgets import QFileDialog, QMessageBox, QAbstractItemView
 # from settings.settings import Settings
 from os import system, mkdir
 from PyQt6 import QtWidgets
@@ -25,7 +25,9 @@ class App:
         self.app = QtWidgets.QApplication([])
         self.win = MyWindow()
         self.win.ui.actionOpen.triggered.connect(self.gpg_file_open)
+        self.win.ui.pictures_list.clicked.connect(self.show_picture)
         # self.get_pictures()
+        self.model = QFileSystemModel()
 
     def item_click(self):
         item = self.win.ui.pictures_list.currentItem().text()
@@ -34,14 +36,13 @@ class App:
 
     def get_pictures(self):
         path = ".temp"
-        model = QFileSystemModel()
-        model.setRootPath(path)
-        self.win.ui.pictures_list.setModel(model)
-        self.win.ui.pictures_list.setRootIndex(model.index(path))
+        self.model.setRootPath(path)
+        self.win.ui.pictures_list.setModel(self.model)
+        self.win.ui.pictures_list.setRootIndex(self.model.index(path))
 
-    def show_picture(self, picture_path):
-        print(1)
-        picture = QPixmap(f".temp/{picture_path}")
+    def show_picture(self, picture):
+        picture_path = self.model.filePath(picture)
+        picture = QPixmap(picture_path)
         picture = picture.scaled(
             self.win.ui.picture_box.width(),
             self.win.ui.picture_box.height(),
@@ -55,12 +56,10 @@ class App:
             directory="/Users/xah",
             caption="Open gpg file",
             parent=self.win)[0]
-        print(file_name)
         if not file_name:
             return
         mkdir(".temp")
         result = system(f"gpg -d {file_name} > ./.temp/{'.'.join(file_name.split('/')[-1].split('.')[0:-1])}")
-        print(result)
         if result == 512:
             QMessageBox.information(
                 self.win,
@@ -71,7 +70,7 @@ class App:
         else:
             zip_file = zipfile.ZipFile(f"./.temp/{'.'.join(file_name.split('/')[-1].split('.')[0:-1])}", 'r')
             zip_file.extractall(path='.temp', members=None, pwd=None)
-            system(f"rm -rf ./.temp/{'.'.join(file_name.split('/')[-1].split('.')[0:-1])} _MACOSX")
+            system(f"rm -rf ./.temp/{'.'.join(file_name.split('/')[-1].split('.')[0:-1])} ./.temp/__MACOSX")
             self.get_pictures()
 
     def run(self):
